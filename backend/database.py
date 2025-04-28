@@ -1,24 +1,77 @@
 from backend.definitions import VideoMetadata
+from pathlib import Path
+import pandas as pd
+from backend.config import METADATA_DIR
+METADATA_CSV = METADATA_DIR / "metadata.csv"
 
-# --- In-memory storage for video metadata (Replace with a database in production) ---
-# Structure: { "video_id": {"id": "...", "title": "...", "description": "...", "filename": "..."} }
-videos_db = {}
+# ------------ Metadata CSV Management ------------- #
+def create_METADATA_CSV():
+    """
+    Creates a CSV file for storing video metadata.
+    """
+    df = pd.DataFrame(columns=["video_id", "title", "description", "filename", "filepath"])
+    df.to_csv(METADATA_CSV, index=False)
+    print(f"Metadata CSV file created at {METADATA_CSV}")
+    return df
 
+def read_metadata_from_csv():
+    """
+    Reads metadata from a CSV file and returns it as a list of VideoMetadata objects.
+    """
+    if not METADATA_CSV.exists():
+        print(f"Metadata CSV file not found: {METADATA_CSV}")
+        df = create_METADATA_CSV()
+    else:
+        df = pd.read_csv(METADATA_CSV)
+    return df
+
+def write_metadata_to_csv(df: pd.DataFrame):
+    """
+    Writes the DataFrame to a CSV file.
+    """
+    if not METADATA_DIR.exists():
+        METADATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    df.to_csv(METADATA_CSV, index=False)
+    print(f"Metadata written to {METADATA_CSV}")
+
+
+# ------------ Metadata Operations ------------- #
 def list_videos_from_db():
     """
     Returns a list of all video metadata from the in-memory database.
     """
-    return list(videos_db.values())
+    df = read_metadata_from_csv()
+    print(df)
+    return df['video_id'].tolist()
 
 def add_metadata_to_db(video_id, metadata: VideoMetadata):
     """
     Adds metadata to the in-memory database.
     """
-    videos_db[video_id] = metadata.model_dump()
+    df = read_metadata_from_csv()
+
+    # Video ID already exists, delete the old entry
+    if len(df[df['video_id'] == video_id]) > 0:
+        df = df[df['video_id'] != video_id]
+        print(f"Video ID {video_id} already exists in CSV. Deleting old entry.")
+
+    # Append new metadata
+    data = metadata.model_dump()
+    df.loc[len(df)] = data
+    print(data)
+    print(df)
     print(f"Added metadata for video ID {video_id}: {metadata}")
+    write_metadata_to_csv(df)
 
 def get_metadata_from_db(video_id):
     """
     Retrieves metadata for a specific video ID from the in-memory database.
     """
-    return videos_db.get(video_id, None)
+    df = read_metadata_from_csv()
+    video_metadata = df[df['video_id'] == video_id]
+    if video_metadata.empty:
+        print(f"Video ID {video_id} not found in CSV.")
+        raise Exception(f"Video ID {video_id} not found in CSV.")
+    video_metadata = video_metadata.iloc[0].to_dict()
+    return video_metadata

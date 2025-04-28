@@ -1,7 +1,10 @@
-import os
+import sys
+from pathlib import Path
+BASE_DIR = str(Path(__file__).resolve().parent.parent)
+sys.path.append(BASE_DIR)
+
 import uuid
 from typing import List, Optional
-from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Header, status, Form
 from fastapi.middleware.cors import CORSMiddleware # If you need frontend interaction
 from backend.config import VIDEO_DIR
@@ -50,7 +53,7 @@ async def upload_video(
 
     # Store metadata in our "DB"
     metadata = VideoMetadata(
-        id=video_id,
+        video_id=video_id,
         title=title,
         description=description,
         filename=filename,
@@ -60,9 +63,9 @@ async def upload_video(
 
     # Response
     print(f"Uploaded video: {metadata.title} (ID: {video_id}, Filename: {filename})")
-    return VideoUploadResponse(id=video_id, title=title, description=description)
+    return VideoUploadResponse(video_id=video_id, title=title, description=description)
 
-@app.get("/videos/", response_model=List[VideoMetadata])
+@app.get("/videos/", response_model=List[str])
 async def list_videos():
     """
     Returns a list of metadata for all available videos.
@@ -85,8 +88,8 @@ async def stream_video(video_id: str, request: Request, range: Optional[str] = H
     Streams the video content. Handles HTTP Range requests for seeking.
     """
     video_metadata = await get_video_metadata(video_id)
-    file_name = video_metadata.filename
-    file_path = Path(video_metadata.filepath)
+    file_name = video_metadata['filename']
+    file_path = Path(video_metadata['filepath'])
     file_exists(file_path, throw_exception=True) # Ensure metadata exists before streaming
     file_size = get_file_size(file_path)
 
