@@ -70,7 +70,9 @@ async def list_videos():
     """
     Returns a list of metadata for all available videos.
     """
-    return list_videos_from_db()
+    vid_list = list_videos_from_db()
+    print(vid_list)
+    return vid_list
 
 @app.get("/videos/{video_id}", response_model=VideoMetadata)
 async def get_video_metadata(video_id: str) -> VideoMetadata:
@@ -98,3 +100,7 @@ async def stream_video(video_id: str, request: Request, range: Optional[str] = H
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to Vidora"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app)
